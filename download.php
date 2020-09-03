@@ -177,7 +177,7 @@ try {
 		/** @var object $USER */
 		$filename = clean_filename($course->shortname . '-' .
 								   $assignment->get_instance($USER->id)->name . '-' .
-								   $cm->id . '.zip');
+								   $cm->id . '-feedback-files.zip');
 		$feedback_files = [];
 		$user_grades = [];
 		foreach(array_keys($users) as $user_id){
