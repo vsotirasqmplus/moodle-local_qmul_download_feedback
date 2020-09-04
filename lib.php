@@ -1,12 +1,13 @@
-<?php // $Id: lib.php, v1.0 2015/04/16  v.sotiras@qmul.ac.uk Exp $
-
+<?php /** @noinspection PhpIncludeInspection */ // $Id: lib.php, v1.0 2015/04/16  v.sotiras@qmul.ac.uk Exp $
+/*
+ * @author Vasileios Sotiras <v.sotiras@qmul.ac.uk> 4th Sep 2020
+ *
+ */
 /**
  * Library of functions and constants for module local_qmul_download_feedback
  *
  */
 global $CFG;
-
-use local_qmul_download_feedback\all_feedbacks_downloaded;
 
 require_once("{$CFG->dirroot}/mod/assign/locallib.php");
 
@@ -29,19 +30,15 @@ function local_qmul_download_feedback_extend_settings_navigation($set_nav, $cont
 		$assign_admin_nav_obj = $set_nav->find('modulesettings', 70);
 		$contextlevel = $context->contextlevel;
 
-		$capable = FALSE;
-		if(has_capability('mod/assign:grade', $context)) {
-			$capable = TRUE;
-		}
+		$capable = has_capability('mod/assign:grade', $context);
 
 		//add link to assignment admin menu
-		if(($contextlevel === 70) && isset($assign_admin_nav_obj->text) && ($assign_admin_nav_obj->text === 'Assignment administration') && $capable) {
+		if(($contextlevel === CONTEXT_MODULE) && isset($assign_admin_nav_obj->text) && ($assign_admin_nav_obj->text === 'Assignment administration') && $capable) {
 
-			//$courseid = required_param('id', PARAM_INT);
 			$assignment_instance_id = $context->instanceid;
 
 
-			$download_url = $CFG->wwwroot . '/local/qmul_download_feedback/download.php?id=' . $assignment_instance_id;
+			$download_url = $CFG->wwwroot . '/local/qmul_download_feedback/download.php?id=' . $assignment_instance_id .'&sesskey='.sesskey();
 			$link_text = get_config('local_qmul_download_feedback', 'label');
 
 			$assign_admin_nav_obj->add($link_text, new moodle_url($download_url));
@@ -55,37 +52,14 @@ function local_qmul_download_feedback_extend_settings_navigation($set_nav, $cont
 		}
 
 	} catch(dml_exception $e) {
-		/** @noinspection ForgottenDebugOutputInspection */
 		error_log($e->getMessage() . ' ' . $e->getTraceAsString());
 	} catch(coding_exception $e) {
-		/** @noinspection ForgottenDebugOutputInspection */
 		error_log($e->getMessage() . ' ' . $e->getTraceAsString());
 	} catch(moodle_exception $e) {
-		/** @noinspection ForgottenDebugOutputInspection */
 		error_log($e->getMessage() . ' ' . $e->getTraceAsString());
 	}
-
-
 }
 
 
-/**
- * @param $assignment_id
- *
- * @return mixed
- * @noinspection ForgottenDebugOutputInspection
- */
-function is_assignment_blind($assignment_id)
-{
-	global $DB;
-	try {
-		return $DB->get_record_sql("SELECT blindmarking FROM {assign} WHERE id = (SELECT instance FROM {course_modules} WHERE id = ?)"
-			, array($assignment_id))->blindmarking;
-
-	} catch(Exception $exception) {
-		error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
-		return NULL;
-	}
-}
 
 
