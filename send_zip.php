@@ -1,4 +1,19 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /*
  * Zip Sending script for local/qmul_download_feedback
  * @author Vasileios Sotiras <v.sotiras@qmul.ac.uk> 4th Sep 2020
@@ -31,7 +46,6 @@ try {
 								   $assignment->get_instance($USER->id)->name . '-' .
 								   $cm->id . '-feedback-files.zip');
 
-
 		$feedback_files = local_qmul_download_feedback\qmul_download_feedback_lib::get_feedback_files($id);
 
 		# check if there are any files
@@ -44,12 +58,11 @@ try {
 			# Send the Zip file
 			send_temp_file($zip_file, $filename);
 		} else {
-			echo 'Feedback files not found';
+			echo get_string('files_not_found', 'local_qmul_download_feedback');
 		}
 	} else {
-		echo 'Feedback file plugin is not enabled';
+		echo get_string('feedback_file_plugin_not_enabled', 'local_qmul_download_feedback');
 	}
-
 } catch(Exception $exception) {
-
+	error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
 }

@@ -1,5 +1,0 @@
-This module enables authenticated users to download a batch of assignments feedbacks as a zip file
-in the normal way, but if enabled the files in the zip will include the student’s qmul username as well as their student ID number in the filename.
-This is only supposed to work if the blind marking setting is turned on in the assignment settings.
-This removes the anonymity as the originial download link provided random numbers in the file name.
-

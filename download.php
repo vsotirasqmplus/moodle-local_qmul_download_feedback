@@ -1,4 +1,20 @@
-<?php // $Id: download.php, v1.0 2020/09/3  v.sotiras@qmul.ac.uk Exp $
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+// $Id: download.php, v1.0 2020/09/3  v.sotiras@qmul.ac.uk Exp $
 
 /**
  * This page downloads the feedback files
@@ -29,13 +45,11 @@ try {
 
 	require_capability('mod/assign:grade', $context);
 
-	$get_zip = 'Download all as zip archive';
-	$click_text = 'Click to get the archive';
-	$list_of_files_text = 'Individual Feedback Files List';
-	$id_number = 'Student ID';
-	$file_number = ''; # 'File ID';
-	$file_feedback = 'Feedback file';
-	$description = 'Please allow enough time to accumulate and archive all the available files before you are prompted to save it';
+	$get_zip = get_string('get_zip', 'local_qmul_download_feedback');
+	$click_text = get_string('click_text', 'local_qmul_download_feedback');
+	$list_of_files_text = get_string('list_of_files_text', 'local_qmul_download_feedback');
+	$id_number = get_string('id_number', 'local_qmul_download_feedback');
+	$description = get_string('description', 'local_qmul_download_feedback');
 
 	$files = local_qmul_download_feedback\qmul_download_feedback_lib::get_assign_feedback_file_references($id);
 	$urls = local_qmul_download_feedback\qmul_download_feedback_lib::get_files_urls($files);
@@ -50,21 +64,19 @@ try {
 	echo '<p/><p/>';
 	echo '<h2>' . $list_of_files_text . '</h2>';
 
-	# echo $id_number, '&emsp;', $file_number, '&emsp;', $file_feedback, '<br/>';
 	$prev_idnumber = '';
 	foreach($urls as $key => $url){
 		[$idnumber, $file_id, $student] = explode('_', $key);
 		if($prev_idnumber !== $idnumber) {
 			$profile_link = html_writer::link(new moodle_url('/user/profile.php?id=' . $student),
 											  $id_number . ' : ' . $idnumber,
-											  ['target' => '_blank', 'type'=>"button", 'class'=>"btn btn-info"]);
+											  ['target' => '_blank', 'type' => "button", 'class' => "btn btn-info"]);
 			echo '<br/>', $profile_link, '<br/>';
 		}
 		$prev_idnumber = $idnumber;
 		echo $url, '<br/>';
 	}
 	echo $OUTPUT->footer();
-} catch(coding_exception $e) {
-} catch(moodle_exception $e) {
+} catch(Exception $e) {
+	error_log($e->getMessage() . ' ' . $e->getTraceAsString());
 }
-

@@ -1,9 +1,25 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /*
  * Library of static functions for local/qmul_download_feedback
  * @author Vasileios Sotiras <v.sotiras@qmul.ac.uk> 4th Sep 2020
  *
  */
+
 namespace local_qmul_download_feedback;
 
 use assign;
@@ -45,9 +61,17 @@ class qmul_download_feedback_lib
 						foreach($item->grades as $grade_user_id => $grade){
 							if(!is_null($grade->grade)) {
 								# {assign grades}.id = {files}.itemid
-								$grade_id_sql = "SELECT ag.id FROM {assign_grades} AS ag WHERE ag.userid = {$user_id} AND ag.assignment = {$cm->instance} AND (ag.timemodified = {$grade->dategraded} OR ag.timecreated = {$grade->dategraded})";
+								$grade_id_sql = "SELECT ag.id FROM {assign_grades} AS ag 
+WHERE ag.userid = {$user_id} 
+	AND ag.assignment = {$cm->instance}
+	AND (ag.timemodified = {$grade->dategraded} OR ag.timecreated = {$grade->dategraded})";
 								$grade_id = $DB->get_record_sql($grade_id_sql, NULL, IGNORE_MULTIPLE)->id ?? 0;
-								$user_files = $fs->get_area_files($context->id, 'assignfeedback_file', 'feedback_files', $grade_id, "itemid, filepath, filename", FALSE);
+								$user_files = $fs->get_area_files($context->id
+									, 'assignfeedback_file'
+									, 'feedback_files'
+									, $grade_id
+									, "itemid, filepath, filename"
+									, TRUE);
 								foreach($user_files as $user_file){
 									$feedback_files[$user_file->get_filename()] = $user_file;
 								}
@@ -61,17 +85,20 @@ class qmul_download_feedback_lib
 		return $feedback_files;
 	}
 
+
 	/**
-	 * @param $assignment_id
+	 * @param int $assignment_id
 	 *
-	 * @return mixed
+	 * @return stdClass|null
 	 */
 	public static function is_assignment_blind(int $assignment_id): ?stdClass
 	{
 		global $DB;
 		try {
-			return $DB->get_record_sql("SELECT blindmarking FROM {assign} WHERE id = (SELECT instance FROM {course_modules} WHERE id = ?)"
-				, array($assignment_id))->blindmarking;
+			$sql = <<<SQL
+SELECT blindmarking FROM {assign} WHERE id = (SELECT instance FROM {course_modules} WHERE id = ?)
+SQL;
+			return $DB->get_record_sql($sql, array($assignment_id))->blindmarking;
 
 		} catch(Exception $exception) {
 			error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
@@ -84,7 +111,7 @@ class qmul_download_feedback_lib
 	 *
 	 * @return mixed|null
 	 */
-	public static function get_feedback_file_plugin(assign $assignment) :?assign_feedback_fileAlias
+	public static function get_feedback_file_plugin(assign $assignment): ?assign_feedback_fileAlias
 	{
 		$feedback_plugin = NULL;
 		if($assignment->is_any_feedback_plugin_enabled()) {
@@ -147,12 +174,12 @@ WHERE cm.id = {$course_module_id}
 	AND gi.itemtype = '{$type}'
 	AND cx.contextlevel = {$context_module}
 	AND f.filearea = '{$file_area}'
-	and f.component = '{$component}'
-	and f.filesize > 0
-	and gg.overridden = 0
-	and gg.hidden = 0
-	and f.status = 0
-order by stu.id		
+	AND f.component = '{$component}'
+	AND f.filesize > 0
+	AND gg.overridden = 0
+	AND gg.hidden = 0
+	AND f.status = 0
+ORDER BY stu.id		
 SQL;
 			try {
 				$results = $DB->get_records_sql($sql);
@@ -174,7 +201,12 @@ SQL;
 		# $fs = get_file_storage();
 		$returns = [];
 		foreach($files as $key => $value){
-			$url3 = moodle_url::make_pluginfile_url($value->contextid, $value->component, $value->filearea, $value->itemid, $value->filepath, $value->filename);
+			$url3 = moodle_url::make_pluginfile_url($value->contextid
+				, $value->component
+				, $value->filearea
+				, $value->itemid
+				, $value->filepath
+				, $value->filename);
 			$link = html_writer::link($url3, $value->filename);
 			$returns[$value->student_idnumber . '_' . $value->id . '_' . $value->student_id] = $link;
 		}
