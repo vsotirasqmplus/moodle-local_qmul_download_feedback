@@ -59,23 +59,54 @@ try {
 	echo '<h1>' . $title . '</h1>';
 	echo '<h2>' . $get_zip . '</h2>';
 	echo '<p>' . $description . '</p>';
-	echo '<a type="button" class="btn btn-primary" target="_blank" href="send_zip.php?id='
+	echo '<a type="button" class="btn btn-primary btn-lg" target="_blank" href="send_zip.php?id='
 		. $id . '&sesskey=' . sesskey() . '">' . $click_text . '</a>';
 	echo '<p/><p/>';
 	echo '<h2>' . $list_of_files_text . '</h2>';
-
+	echo '<div style="
+max-height:80vh; 
+max-width:80vw; 
+flex-direction: row; 
+flex-wrap: wrap; 
+justify-content: flex-start; 
+align-content: flex-start; 
+flex-flow: row wrap;
+overflow-scrolling: auto; 
+overflow: auto; 
+display: flex;
+margin: 1rem;
+">';
+	echo '<div>';
 	$prev_idnumber = '';
 	foreach($urls as $key => $url){
 		[$idnumber, $file_id, $student] = explode('_', $key);
 		if($prev_idnumber !== $idnumber) {
 			$profile_link = html_writer::link(new moodle_url('/user/profile.php?id=' . $student),
 											  $id_number . ' : ' . $idnumber,
-											  ['target' => '_blank', 'type' => "button", 'class' => "btn btn-info"]);
-			echo '<br/>', $profile_link, '<br/>';
+											  ['target' => '_blank'
+												  , 'type' => "button"
+												  , 'class' => "btn btn-primary"
+												  , 'style' => 'margin: 1rem']);
+			echo '</div>
+<div style="display: inline-flex;
+border: black; 
+margin: 1rem;
+padding: 1rem; 
+max-height: 15rem; 
+min-height: 3rem; 
+min-width: 15rem; 
+max-width: 60rem;
+flex-direction: column; 
+flex-wrap: wrap; 
+background: aliceblue;
+border-radius: 1rem;
+text-wrap: normal;
+">', $profile_link, '<br/>';
 		}
 		$prev_idnumber = $idnumber;
-		echo $url, '<br/>';
+		echo '<p>', $url, '</p>';
 	}
+	echo '</div>';
 	echo $OUTPUT->footer();
 } catch(Exception $e) {
 	error_log($e->getMessage() . ' ' . $e->getTraceAsString());
