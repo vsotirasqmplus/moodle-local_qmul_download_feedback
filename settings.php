@@ -26,33 +26,49 @@ defined('MOODLE_INTERNAL') || die;
 
 global $ADMIN;
 try {
-	$hassiteconfig = has_capability('moodle/site:config', context_system::instance());
-} catch(coding_exception $exception) {
-	error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
-	$hassiteconfig = FALSE;
-} catch(dml_exception $exception) {
-	error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
-	$hassiteconfig = FALSE;
+    $hassiteconfig = has_capability('moodle/site:config', context_system::instance());
+} catch (coding_exception $exception) {
+    debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);
+    $hassiteconfig = false;
+} catch (dml_exception $exception) {
+    debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);
+    $hassiteconfig = false;
 }
-if($hassiteconfig) {
-	try {
-		$settings = new admin_settingpage('local_qmul_download_feedback'
-			, get_string('pluginname', 'local_qmul_download_feedback'));
+if ($hassiteconfig) {
+    try {
+        $settings = new admin_settingpage(
+            'local_qmul_download_feedback',
+            get_string('pluginname', 'local_qmul_download_feedback')
+        );
 
-		$settings->add(new admin_setting_heading('local_qmul_download_feedback' . '/heading'
-			, ' ', get_string('pluginname_desc', 'local_qmul_download_feedback')));
+        $settings->add(
+            new admin_setting_heading(
+                'local_qmul_download_feedback' . '/heading',
+                ' ',
+                get_string('pluginname_desc', 'local_qmul_download_feedback')
+            )
+        );
 
-		$settings->add(new admin_setting_configcheckbox('local_qmul_download_feedback' . '/enable'
-			, get_string('enable', 'local_qmul_download_feedback')
-			, get_string('use_url', 'local_qmul_download_feedback'), 0));
+        $settings->add(
+            new admin_setting_configcheckbox(
+                'local_qmul_download_feedback' . '/enable',
+                get_string('enable', 'local_qmul_download_feedback'),
+                get_string('use_url', 'local_qmul_download_feedback'),
+                0
+            )
+        );
 
-		$settings->add(new admin_setting_configtext('local_qmul_download_feedback' . '/label'
-			, get_string('linklabel', 'local_qmul_download_feedback')
-			, get_string('get_zip','local_qmul_download_feedback')
-			, get_string('get_zip','local_qmul_download_feedback')));
+        $settings->add(
+            new admin_setting_configtext(
+                'local_qmul_download_feedback' . '/label',
+                get_string('linklabel', 'local_qmul_download_feedback'),
+                get_string('get_zip', 'local_qmul_download_feedback'),
+                get_string('get_zip', 'local_qmul_download_feedback')
+            )
+        );
 
-		$ADMIN->add('localplugins', $settings);
-	} catch(Exception $exception) {
-		error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
-	}
+        $ADMIN->add('localplugins', $settings);
+    } catch (Exception $exception) {
+        debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);
+    }
 }

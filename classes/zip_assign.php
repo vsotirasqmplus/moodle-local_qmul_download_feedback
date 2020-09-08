@@ -13,13 +13,20 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
 /*
  * To send zip file of feedback files for local/qmul_download_feedback
  * we need access to a protected assign class method, so we extend it
- * @author Vasileios Sotiras <v.sotiras@qmul.ac.uk> 4th Sep 2020
  *
+ * 4th Sep 2020
+ * php version 7.2
+ *
+ * @category local
+ * @package  local_qmul_download_feedback
+ * @author   Vasileios Sotiras <v.sotiras@qmul.ac.uk>
+ * @license  GPL v3
+ * @link     http://qmplus.qmul.ac.uk
  */
+/** @noinspection PhpIncludeInspection */
 
 namespace local_qmul_download_feedback;
 
@@ -27,37 +34,47 @@ namespace local_qmul_download_feedback;
  * We need to access a protected method inside the assign class to create zip files.
  * A proposal is to make a child class just for this minor issue
 */
-/** @var object $CFG */
-/** @noinspection PhpIncludeInspection */
+defined('MOODLE_INTERNAL') || die();
 require_once("{$CFG->dirroot}/mod/assign/locallib.php");
 
 use assign;
 use zip_packer;
 
+/**
+ * Class zip_assign
+ *
+ * @category Local
+ * @package  Local_Qmul_Download_Feedback
+ * @author   Vasileios Sotiras <v.sotiras@qmul.ac.uk>
+ * @license  GPL v3
+ * @link     http://qmplus.qmul.ac.uk
+ */
 class zip_assign extends assign
 {
-	/**
-	 * Generate zip file from array of given files.
-	 *
-	 * @param array $files_for_zipping - array of files to pass into archive_to_pathname.
-	 *                                 This array is indexed by the final file name and each
-	 *                                 element in the array is an instance of a stored_file object.
-	 *
-	 * @return false|string filename of a temporary fie
-	 *         not have a .zip extension - it is a temp file.
-	 * @noinspection PhpMissingParamTypeInspection
-	 * @noinspection MissingReturnTypeInspection
-	 */
-	final public function pack_files($files_for_zipping)
-	{
-		global $CFG;
-		// Create path for new zip file.
-		$temp_zip = tempnam($CFG->tempdir . '/', 'assignment_');
-		// Zip files.
-		$zipper = new zip_packer();
-		if($zipper->archive_to_pathname($files_for_zipping, $temp_zip)) {
-			return $temp_zip;
-		}
-		return FALSE;
-	}
+    /**
+     * Generate zip file from array of given files.
+     *
+     * @param array $files             - array of files to pass
+     *                                 into archive_to_pathname.
+     *                                 This array is indexed by the
+     *                                 final file name and each
+     *                                 element in the array is an
+     *                                 instance of a stored_file object.
+     *
+     * @return       false|string filename of a temporary fie
+     *         not have a .zip extension - it is a temp file.
+     * @noinspection PhpMissingParamTypeInspection
+     * @noinspection MissingReturnTypeInspection
+     */
+    final public function pack_files($files) {
+        global $CFG;
+        // Create path for new zip file.
+        $temp = tempnam($CFG->tempdir . '/', 'assignment_');
+        // Zip files.
+        $zipper = new zip_packer();
+        if ($zipper->archive_to_pathname($files, $temp)) {
+            return $temp;
+        }
+        return false;
+    }
 }

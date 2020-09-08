@@ -13,11 +13,17 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
-/*
+/**
  * Library of static functions for local/qmul_download_feedback
- * @author Vasileios Sotiras <v.sotiras@qmul.ac.uk> 4th Sep 2020
+ * 4th Sep 2020
  *
+ * php version 7.2.0
+ *
+ * @category Local
+ * @package  Local_Qmul_Download_Feedback
+ * @author   Vasileios Sotiras <v.sotiras@qmul.ac.uk>
+ * @license  GPL v3
+ * @link     http://qmplus.qmul.ac.uk
  */
 
 namespace local_qmul_download_feedback;
@@ -31,117 +37,105 @@ use moodle_exception;
 use moodle_url;
 use stdClass;
 
-# require_once '../../../../config.php';
-/** @var object $CFG */
-/** @noinspection PhpIncludeInspection */
-require_once "{$CFG->dirroot}/enrol/externallib.php";
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once("{$CFG->dirroot}/enrol/externallib.php");
 
 defined('MOODLE_INTERNAL') || die();
 
-class qmul_download_feedback_lib
-{
-	/**
-	 * @param int $id assignment ID
-	 *
-	 * @return array of stored files
-	 */
-	public static function get_feedback_files(int $id): array
-	{
-		global $DB;
-		$feedback_files = [];
-		try {
-			[$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
-			$context = context_module::instance($cm->id);
-			$users = get_enrolled_users($context);
-			$fs = get_file_storage();
-			foreach(array_keys($users) as $user_id){
-				$grading_info = grade_get_grades($course->id, 'mod', 'assign', $cm->instance, [$user_id]);
-				foreach($grading_info->items as $item_id => $item){
-					if(count($item->grades) > 0) {
-						foreach($item->grades as $grade_user_id => $grade){
-							if(!is_null($grade->grade)) {
-								# {assign grades}.id = {files}.itemid
-								$grade_id_sql = "SELECT ag.id FROM {assign_grades} AS ag 
-WHERE ag.userid = {$user_id} 
+/**
+ * Class qmul_download_feedback_lib
+ *
+ * @category Local
+ * @package  Local_Qmul_Download_Feedback
+ * @author   Vasileios Sotiras <v.sotiras@qmul.ac.uk>
+ * @license  GPL v3
+ * @link     http://qmplus.qmul.ac.uk
+ */
+class qmul_download_feedback_lib {
+    /**
+     * @param int $id assignment ID
+     *
+     * @return array of stored files
+     */
+    public static function get_feedback_files(int $id): array {
+        global $DB;
+        $files = [];
+        try {
+            [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
+            $context = context_module::instance($cm->id);
+            $users = get_enrolled_users($context);
+            $fs = get_file_storage();
+            foreach (array_keys($users) as $user) {
+                $gradinginfo = grade_get_grades($course->id, 'mod', 'assign', $cm->instance, [$user]);
+                foreach ($gradinginfo->items as $itemid => $item) {
+                    if (count($item->grades) > 0) {
+                        foreach ($item->grades as $gradeuserid => $grade) {
+                            if (!is_null($grade->grade)) {
+                                // Association rule {assign grades}.id = {files}.itemid .
+                                $gradeidsql = "SELECT ag.id FROM {assign_grades} AS ag
+WHERE ag.userid = {$user}
 	AND ag.assignment = {$cm->instance}
 	AND (ag.timemodified = {$grade->dategraded} OR ag.timecreated = {$grade->dategraded})";
-								$grade_id = $DB->get_record_sql($grade_id_sql, NULL, IGNORE_MULTIPLE)->id ?? 0;
-								$user_files = $fs->get_area_files($context->id
-									, 'assignfeedback_file'
-									, 'feedback_files'
-									, $grade_id
-									, "itemid, filepath, filename"
-									, TRUE);
-								foreach($user_files as $user_file){
-									$feedback_files[$user_file->get_filename()] = $user_file;
-								}
-							}
-						}
-					}
-				}
-			}
-		} catch(moodle_exception $e) {
-		}
-		return $feedback_files;
-	}
+                                $gradeid = $DB->get_record_sql($gradeidsql, null, IGNORE_MULTIPLE)->id ?? 0;
+                                $userfiles = $fs->get_area_files(
+                                    $context->id,
+                                    'assignfeedback_file',
+                                    'files',
+                                    $gradeid,
+                                    "itemid, filepath, filename",
+                                    true
+                                );
+                                foreach ($userfiles as $userfile) {
+                                    $files[$userfile->get_filename()] = $userfile;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (moodle_exception $exception) {
+            debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);
+        }
+        return $files;
+    }
 
 
-	/**
-	 * @param int $assignment_id
-	 *
-	 * @return stdClass|null
-	 */
-	public static function is_assignment_blind(int $assignment_id): ?stdClass
-	{
-		global $DB;
-		try {
-			$sql = <<<SQL
-SELECT blindmarking FROM {assign} WHERE id = (SELECT instance FROM {course_modules} WHERE id = ?)
-SQL;
-			return $DB->get_record_sql($sql, array($assignment_id))->blindmarking;
+    /**
+     * @param assign $assignment
+     *
+     * @return mixed|null
+     */
+    public static function get_feedback_file_plugin(assign $assignment): ?assign_feedback_fileAlias {
+        $feedbackplugin = null;
+        if ($assignment->is_any_feedback_plugin_enabled()) {
+            foreach ($assignment->load_plugins('assignfeedback') as $pluginid => $plugin) {
+                // We need only the 'file' type plugin named 'Feedback files'.
+                if ($plugin->get_type() === 'file' && $plugin->is_enabled() && $plugin->get_name() === 'Feedback files') {
+                    $feedbackplugin = $plugin;
+                }
+            }
+        }
+        return $feedbackplugin;
+    }
 
-		} catch(Exception $exception) {
-			error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
-			return NULL;
-		}
-	}
-
-	/**
-	 * @param assign $assignment
-	 *
-	 * @return mixed|null
-	 */
-	public static function get_feedback_file_plugin(assign $assignment): ?assign_feedback_fileAlias
-	{
-		$feedback_plugin = NULL;
-		if($assignment->is_any_feedback_plugin_enabled()) {
-			foreach($assignment->load_plugins('assignfeedback') as $plugin_id => $plugin){
-				# we need only the 'file' type plugin named 'Feedback files'
-				if($plugin->get_type() === 'file' && $plugin->is_enabled() && $plugin->get_name() === 'Feedback files') {
-					$feedback_plugin = $plugin;
-				}
-			}
-		}
-		return $feedback_plugin;
-	}
-
-	/**
-	 * @param int $course_module_id
-	 *
-	 * @return array
-	 */
-	public static function get_assign_feedback_file_references(int $course_module_id): array
-	{
-		global $DB;
-		$results = [];
-		if($course_module_id > 0) {
-			$context_module = CONTEXT_MODULE;
-			$type = 'mod';
-			$module = 'assign';
-			$file_area = 'feedback_files';
-			$component = 'assignfeedback_file';
-			$sql = <<<SQL
-SELECT 
+    /**
+     * @param int $coursemoduleid
+     *
+     * @return array
+     */
+    public static function get_assign_feedback_file_references(int $coursemoduleid): array {
+        global $DB;
+        $results = [];
+        if ($coursemoduleid > 0) {
+            $contextmodule = CONTEXT_MODULE;
+            $type = 'mod';
+            $module = 'assign';
+            $filearea = 'feedback_files';
+            $component = 'assignfeedback_file';
+            $sql = <<<SQL
+SELECT
 	  f.id
 	, f.contextid
 	, stu.idnumber AS student_idnumber
@@ -169,47 +163,46 @@ JOIN {assignfeedback_file} AS aff ON aff.assignment = ma.id
 	AND aff.grade = ag.id
 JOIN {files} AS f ON f.contextid = cx.id
 	AND f.itemid = ag.id
-WHERE cm.id = {$course_module_id}
+WHERE cm.id = {$coursemoduleid}
 	AND mo.name = '{$module}'
 	AND gi.itemtype = '{$type}'
-	AND cx.contextlevel = {$context_module}
-	AND f.filearea = '{$file_area}'
+	AND cx.contextlevel = {$contextmodule}
+	AND f.filearea = '{$filearea}'
 	AND f.component = '{$component}'
 	AND f.filesize > 0
 	AND gg.overridden = 0
 	AND gg.hidden = 0
 	AND f.status = 0
-ORDER BY stu.id		
+ORDER BY stu.id
 SQL;
-			try {
-				$results = $DB->get_records_sql($sql);
+            try {
+                $results = $DB->get_records_sql($sql);
+            } catch (Exception $exception) {
+                debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);
+            }
+        }
+        return $results;
+    }
 
-			} catch(Exception $exception) {
-				error_log($exception->getMessage() . ' ' . $exception->getTraceAsString());
-			}
-		}
-		return $results;
-	}
-
-	/**
-	 * @param array $files
-	 *
-	 * @return array
-	 */
-	public static function get_files_urls(array $files): array
-	{
-		# $fs = get_file_storage();
-		$returns = [];
-		foreach($files as $key => $value){
-			$url3 = moodle_url::make_pluginfile_url($value->contextid
-				, $value->component
-				, $value->filearea
-				, $value->itemid
-				, $value->filepath
-				, $value->filename);
-			$link = html_writer::link($url3, $value->filename);
-			$returns[$value->student_idnumber . '_' . $value->id . '_' . $value->student_id] = $link;
-		}
-		return $returns;
-	}
+    /**
+     * @param array $files
+     *
+     * @return array
+     */
+    public static function get_files_urls(array $files): array {
+        $returns = [];
+        foreach ($files as $key => $value) {
+            $url3 = moodle_url::make_pluginfile_url(
+                $value->contextid,
+                $value->component,
+                $value->filearea,
+                $value->itemid,
+                $value->filepath,
+                $value->filename
+            );
+            $link = html_writer::link($url3, $value->filename);
+            $returns[$value->student_idnumber . '_' . $value->id . '_' . $value->student_id] = $link;
+        }
+        return $returns;
+    }
 }
