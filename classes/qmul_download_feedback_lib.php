@@ -82,7 +82,7 @@ WHERE ag.userid = {$user}
                                 $userfiles = $fs->get_area_files(
                                     $context->id,
                                     'assignfeedback_file',
-                                    'files',
+                                    'feedback_files',
                                     $gradeid,
                                     "itemid, filepath, filename",
                                     true
