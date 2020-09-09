@@ -24,16 +24,23 @@ use local_qmul_download_feedback\qmul_download_feedback_lib;
 use local_qmul_download_feedback\zip_assign;
 
 require('../../config.php');
-require_login();
-// This may take a long time.
-core_php_time_limit::raise();
-
 try {
+    require_login();
+    // This may take a long time.
+    core_php_time_limit::raise();
+    global $CFG;
+    global $PAGE, $OUTPUT;
     $id = required_param('id', PARAM_INT);
     $sesskey = required_param('sesskey', PARAM_ALPHANUMEXT);
-    $url = new moodle_url('/local/qmul_download_feedback/send_zip.php', ['id' => $id, 'sesskey' => sesskey()]);
+    $test = optional_param('test', '0', PARAM_INT);
     [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
+    $url = new moodle_url('/local/qmul_download_feedback/send_zip.php', ['id' => $id, 'sesskey' => $sesskey]);
+    require_login($course, true, $cm);
     $context = context_module::instance($cm->id);
+    [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
+    $PAGE->set_context($context);
+    $PAGE->set_url($url);
+    $PAGE->set_title(get_string('get_zip', 'local_qmul_download_feedback'));
     require_capability('mod/assign:grade', $context);
 
     $assignment = new zip_assign($context, $cm, $course);
@@ -41,12 +48,11 @@ try {
 
     $feedbackplugin = qmul_download_feedback_lib::get_feedback_file_plugin($assignment);
     if ($feedbackplugin) {
-
         global $USER;
         $filename = clean_filename(
             $course->shortname . '-' .
-                                   $assignment->get_instance($USER->id)->name . '-' .
-                                   $cm->id . '-feedback-files.zip'
+            $assignment->get_instance($USER->id)->name . '-' .
+            $cm->id . '-feedback-files.zip'
         );
 
         $feedbackfiles = local_qmul_download_feedback\qmul_download_feedback_lib::get_feedback_files($id);
@@ -56,15 +62,57 @@ try {
             // Errors of the packing such as invalid or missing should be contained.
             ob_start();
             $zipfile = $assignment->pack_files($feedbackfiles);
-            // Discard error outputs.
-            ob_end_clean();
-            // Send the Zip file.
-            send_temp_file($zipfile, $filename);
+            // Record error outputs.
+            $errors = strip_tags(purify_html(ob_get_clean())) . "<br/>";
+            if (isset($errors)) {
+                $errors = str_replace('line', "<br/>line", $errors);
+                $errors = str_replace('Can not', "<br/>Can not", $errors);
+                // Remove call stack lines.
+                $errlines = [];
+                foreach (explode('<br/>', $errors) as $line) {
+                    if (strpos($line, 'Can not zip ') !== false) {
+                        $errlines[] = $line . '<br/>';
+                    }
+                }
+                if (count($errlines) > 0) {
+                    $errors = implode($errlines);
+                }
+                // The  starting part of the line Format [Wed Sep 09 02:26:54.151203 2020] .
+                $ms = sprintf('%09.6f', date('s') + fmod(microtime(true), 1));
+                $type = ' [php7:notice] ';
+                $date = date("[D M d H:i:{$ms} Y]", time());
+                file_put_contents("php://stderr", $date . $type . $errors);
+            }
+            if ($test === 1) {
+                if ($errors) {
+                    echo $OUTPUT->header();
+                    echo '<h1>' . get_string('exam_error', 'local_qmul_download_feedback'), '</h1>';
+                    echo $errors;
+                    echo $OUTPUT->footer();
+                } else {
+                    echo $OUTPUT->header();
+                    echo '<h1>' . get_string('exam_fine', 'local_qmul_download_feedback'), '</h1>';
+                    echo $OUTPUT->footer();
+                }
+            } else {
+                if ($zipfile) {
+                    // Send the Zip file.
+                    send_temp_file($zipfile, $filename);
+                } else {
+                    echo $OUTPUT->header();
+                    echo get_string('files_not_found', 'local_qmul_download_feedback');
+                    echo $OUTPUT->footer();
+                }
+            }
         } else {
+            echo $OUTPUT->header();
             echo get_string('files_not_found', 'local_qmul_download_feedback');
+            echo $OUTPUT->footer();
         }
     } else {
+        echo $OUTPUT->header();
         echo get_string('feedback_file_plugin_not_enabled', 'local_qmul_download_feedback');
+        echo $OUTPUT->footer();
     }
 } catch (Exception $exception) {
     debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);

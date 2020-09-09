@@ -15,16 +15,16 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This page downloads the feedback files
+ * This page shows links to downloads the feedback files
  * When looking for assignment grades you have to look for assign grades not the grade grades.
  * These grades will be used as itemid for each file to be identified in the files database
  * and downloaded inside the zip file.
- * $Id: download.php, v1.0 2020/09/3  v.sotiras@qmul.ac.uk Exp $
+ * $Id: download.php, v1.0 2020/09/03  <v.sotiras@qmul.ac.uk> Exp $
  */
-
 require_once('../../config.php');
-global $OUTPUT;
+require_once('locallib.php');
 try {
+    global $OUTPUT;
     global $PAGE;
     $id = required_param('id', PARAM_INT);
     $sesskey = required_param('sesskey', PARAM_ALPHANUMEXT);
@@ -43,6 +43,7 @@ try {
 
     $getzip = get_string('get_zip', 'local_qmul_download_feedback');
     $clicktext = get_string('click_text', 'local_qmul_download_feedback');
+    $examtext = get_string('examine_archive', 'local_qmul_download_feedback');
     $listoffilestext = get_string('list_of_files_text', 'local_qmul_download_feedback');
     $idnumber = get_string('id_number', 'local_qmul_download_feedback');
     $description = get_string('description', 'local_qmul_download_feedback');
@@ -55,10 +56,29 @@ try {
     echo '<h2>' . $getzip . '</h2>';
     echo '<p>' . $description . '</p>';
     echo '<a type="button" class="btn btn-primary btn-lg" target="_blank" href="send_zip.php?id='
-    . $id . '&sesskey=' . sesskey() . '">' . $clicktext . '</a>';
-    echo '<p>&emsp;</p><p>&emsp;</p>';
+        . $id . '&sesskey=' . sesskey() . '">' . $clicktext . '</a>';
+    echo '<p>&emsp;</p>';
+    echo '<a type="button" class="btn btn-primary btn-lg" target="_blank" href="send_zip.php?id='
+        . $id . '&sesskey=' . sesskey() . '&test=1">' . $examtext . '</a>';
+    echo '<p>&emsp;</p>';
     echo '<h2>' . $listoffilestext . '</h2>';
-    echo '<div style="
+    echo '<button class="btn btn-info" onclick="lqdf_toggle()" id="lqdftoggle" type="button" >'
+        . get_string('toggle_files', 'local_qmul_download_feedback') . '</button>';
+    ?>
+    <br/><br/>
+    <script>
+        function lqdf_toggle() {
+            var elem = document.getElementById('lqdf_files');
+            if (elem) {
+                if (elem.style.display === "none") {
+                    elem.style.display = "flex";
+                } else {
+                    elem.style.display = "none";
+                }
+            }
+        }
+    </script>
+    <div id="lqdf_files" style="
 max-height:80vh;
 max-width:80vw;
 flex-direction: row;
@@ -68,10 +88,11 @@ align-content: flex-start;
 flex-flow: row wrap;
 overflow-scrolling: auto;
 overflow: auto;
-display: flex;
 margin: 1rem;
-">';
-    echo '<div>';
+display: none;
+">
+        <div>
+    <?php
     $previdnumber = '';
     foreach ($urls as $key => $url) {
         [$idnumber, $fileid, $student] = explode('_', $key);
@@ -80,13 +101,14 @@ margin: 1rem;
                 new moodle_url('/user/profile.php?id=' . $student),
                 $idnumber . ' : ' . $idnumber,
                 ['target' => '_blank'
-                                                  , 'type' => "button"
-                                                  , 'class' => "btn btn-primary"
-                                                  , 'style' => 'margin: 1rem']
+                    , 'type' => "button"
+                    , 'class' => "btn btn-primary"
+                    , 'style' => 'margin: 1rem']
             );
             echo '</div>
 <div style="display: inline-flex;
-border: black;
+overflow: auto;
+text-wrap: normal;
 margin: 1rem;
 padding: 1rem;
 max-height: 15rem;
@@ -98,12 +120,17 @@ flex-wrap: wrap;
 background: aliceblue;
 border-radius: 1rem;
 text-wrap: normal;
-">', $profilelink, '<br/>';
+">', '<div style="display: grid; float: top">', $profilelink, '</div>';
         }
         $previdnumber = $idnumber;
-        echo '<p>', $url, '</p>';
+        echo '<div style="float: top; position: relative">', $url, '</div>';
     }
-    echo '</div>';
+    echo '</div>
+</div>';
+    echo '<h2>' . get_string('feedback_comments', 'local_qmul_download_feedback') . '</h2>';
+    $feedbacktextlink = qmul_download_feedback_show_feedback_comments_link($id);
+    $feedbacktextlink = str_replace('<a ', '<a type="button" class="btn btn-primary btn-lg" ', $feedbacktextlink);
+    echo $feedbacktextlink;
     echo $OUTPUT->footer();
 } catch (Exception $e) {
     debugging($e->getMessage() . ' ' . $e->getTraceAsString(), DEBUG_DEVELOPER);

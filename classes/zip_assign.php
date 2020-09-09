@@ -35,6 +35,7 @@ namespace local_qmul_download_feedback;
  * A proposal is to make a child class just for this minor issue
 */
 defined('MOODLE_INTERNAL') || die();
+global $CFG;
 require_once("{$CFG->dirroot}/mod/assign/locallib.php");
 
 use assign;

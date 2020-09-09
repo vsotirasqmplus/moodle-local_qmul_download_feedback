@@ -88,7 +88,16 @@ WHERE ag.userid = {$user}
                                     true
                                 );
                                 foreach ($userfiles as $userfile) {
-                                    $files[$userfile->get_filename()] = $userfile;
+                                    $fileindex = $userfile->get_filename();
+                                    // Avoid dot file names.
+                                    if ($fileindex !== '.') {
+                                        // Avoid overriding existing files and add idnumber.
+                                        if (isset($files[$fileindex])) {
+                                            $fileindex += '_' . $users[$user]->idnumber;
+                                        }
+                                        $fileindex = clean_filename($fileindex);
+                                        $files[$fileindex] = $userfile;
+                                    }
                                 }
                             }
                         }
