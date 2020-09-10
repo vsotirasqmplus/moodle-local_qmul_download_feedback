@@ -54,6 +54,26 @@ defined('MOODLE_INTERNAL') || die();
  * @link     http://qmplus.qmul.ac.uk
  */
 class qmul_download_feedback_lib {
+
+    /**
+     * @param int $id
+     *
+     * @return bool
+     */
+    public static function is_blindmarked(int $id): bool {
+        global $DB;
+        $blind = '0';
+        try {
+            $cmid = $DB->get_field('course_modules', 'instance', ['id' => $id], IGNORE_MISSING);
+            if ($cmid) {
+                $blind = $DB->get_field('assign', 'blindmarking', ['id' => $cmid], IGNORE_MISSING);
+            }
+        } catch (Exception $exception) {
+            debugging($exception->getMessage() . ' ' . $exception->getTraceAsString(), DEBUG_DEVELOPER);
+        }
+        return ($blind == '1');
+    }
+
     /**
      * @param int $id assignment ID
      *
@@ -64,6 +84,7 @@ class qmul_download_feedback_lib {
         $files = [];
         try {
             [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
+            $isblind = self::is_blindmarked((int)$cm->id);
             $context = context_module::instance($cm->id);
             $users = get_enrolled_users($context);
             $fs = get_file_storage();
@@ -90,11 +111,29 @@ WHERE ag.userid = {$user}
                                 foreach ($userfiles as $userfile) {
                                     $fileindex = $userfile->get_filename();
                                     // Avoid dot file names.
-                                    if ($fileindex !== '.') {
-                                        // Avoid overriding existing files and add idnumber.
-                                        if (isset($files[$fileindex])) {
-                                            $fileindex += '_' . $users[$user]->idnumber;
+                                    if ($fileindex !== '.' && strlen($fileindex) > 0) {
+                                        // If it is blind marked set the file id as file name.
+                                        if ($isblind) {
+                                            // Get the file extension.
+                                            $explodedname = explode('.', $fileindex);
+                                            if (($pieces = count($explodedname)) > 1) {
+                                                $fileextension = '.' . $explodedname[$pieces - 1];
+                                            } else {
+                                                $fileextension = '';
+                                            }
+                                            // Add the anonymous file with its original extension.
+                                            $fileindex = $userfile->get_id() . $fileextension;
+                                        } else {
+                                            // Avoid overriding existing user files and add idnumber.
+                                            // In general terms I should not expect this but just in case.
+                                            if (isset($files[$fileindex])) {
+                                                $useridnumber =
+                                                    ($users[$user]->idnumber > '') ?
+                                                        $users[$user]->idnumber : $users[$user]->username;
+                                                $fileindex .= '_' . $useridnumber;
+                                            }
                                         }
+                                        // Use a valid filename for the zip.
                                         $fileindex = clean_filename($fileindex);
                                         $files[$fileindex] = $userfile;
                                     }

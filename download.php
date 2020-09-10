@@ -24,33 +24,27 @@
 require_once('../../config.php');
 require_once('locallib.php');
 try {
-    global $OUTPUT;
-    global $PAGE;
+    global $OUTPUT, $PAGE, $DB;
     $id = required_param('id', PARAM_INT);
     $sesskey = required_param('sesskey', PARAM_ALPHANUMEXT);
-
     $url = new moodle_url('/local/qmul_download_feedback/download.php', ['id' => $id, 'sesskey' => sesskey()]);
     $title = 'Assignment Feedback Files Download';
     [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
-
-    require_login($course, true, $cm);
     $context = context_module::instance($cm->id);
-    $PAGE->set_url($url);
-    $PAGE->set_context($context);
-    $PAGE->set_title($title);
-
+    require_login($course, true, $cm);
     require_capability('mod/assign:grade', $context);
-
+    $PAGE->set_title($title);
+    $PAGE->set_context($context);
+    $PAGE->set_url($url);
     $getzip = get_string('get_zip', 'local_qmul_download_feedback');
     $clicktext = get_string('click_text', 'local_qmul_download_feedback');
     $examtext = get_string('examine_archive', 'local_qmul_download_feedback');
     $listoffilestext = get_string('list_of_files_text', 'local_qmul_download_feedback');
-    $idnumber = get_string('id_number', 'local_qmul_download_feedback');
+    $idnumbertext = get_string('id_number', 'local_qmul_download_feedback');
     $description = get_string('description', 'local_qmul_download_feedback');
-
     $files = local_qmul_download_feedback\qmul_download_feedback_lib::get_assign_feedback_file_references($id);
     $urls = local_qmul_download_feedback\qmul_download_feedback_lib::get_files_urls($files);
-
+    $isblind = local_qmul_download_feedback\qmul_download_feedback_lib::is_blindmarked($id);
     echo $OUTPUT->header();
     echo '<h1>' . $title . '</h1>';
     echo '<h2>' . $getzip . '</h2>';
@@ -68,7 +62,7 @@ try {
     <br/><br/>
     <script>
         function lqdf_toggle() {
-            var elem = document.getElementById('lqdf_files');
+            let elem = document.getElementById('lqdf_files');
             if (elem) {
                 if (elem.style.display === "none") {
                     elem.style.display = "flex";
@@ -96,10 +90,13 @@ display: none;
     $previdnumber = '';
     foreach ($urls as $key => $url) {
         [$idnumber, $fileid, $student] = explode('_', $key);
-        if ($previdnumber !== $idnumber) {
-            $profilelink = html_writer::link(
+        $username = $DB->get_field('user', 'username', ['id' => $student], IGNORE_MISSING);
+        $prevuser = $isblind ? $fileid : $idnumber;
+        if ($previdnumber !== $prevuser) {
+            $text = !$isblind ? $username . ' : ' . $idnumber : 'File : ' . $fileid;
+            $profilelink = $isblind ? $text : html_writer::link(
                 new moodle_url('/user/profile.php?id=' . $student),
-                $idnumber . ' : ' . $idnumber,
+                $text,
                 ['target' => '_blank'
                     , 'type' => "button"
                     , 'class' => "btn btn-primary"
@@ -119,10 +116,9 @@ flex-direction: column;
 flex-wrap: wrap;
 background: aliceblue;
 border-radius: 1rem;
-text-wrap: normal;
 ">', '<div style="display: grid; float: top">', $profilelink, '</div>';
         }
-        $previdnumber = $idnumber;
+        $previdnumber = $prevuser;
         echo '<div style="float: top; position: relative">', $url, '</div>';
     }
     echo '</div>

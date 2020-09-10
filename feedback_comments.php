@@ -28,7 +28,7 @@ try {
     $id = required_param('id', PARAM_INT);
     $sesskey = required_param('sesskey', PARAM_ALPHANUMEXT);
 
-    $url = new moodle_url('/local/qmul_download_feedback/download.php', ['id' => $id, 'sesskey' => sesskey()]);
+    $url = new moodle_url('/local/qmul_download_feedback/feedback_comments.php', ['id' => $id, 'sesskey' => sesskey()]);
     $title = 'Assignment Feedback Files Download';
     [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
 
