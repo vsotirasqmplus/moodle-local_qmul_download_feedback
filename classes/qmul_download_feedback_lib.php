@@ -85,6 +85,7 @@ class qmul_download_feedback_lib {
         try {
             [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
             $isblind = self::is_blindmarked((int)$cm->id);
+            $isgroup = $cm->groupmode === '1';
             $context = context_module::instance($cm->id);
             $users = get_enrolled_users($context);
             $fs = get_file_storage();
@@ -123,7 +124,7 @@ WHERE ag.userid = {$user}
 
                                             // In general terms I should not expect this but just in case.
                                             if (isset($files[$fileindex])) {
-                                                if (self::is_group_submit()) {
+                                                if ($isgroup) {
                                                     // Allow the first file only. Trick the loop.
                                                     $fileindex .= '';
                                                 } else {
@@ -151,6 +152,11 @@ WHERE ag.userid = {$user}
         return $files;
     }
 
+    /**
+     * @param string $filename
+     *
+     * @return array
+     */
     private static function get_filename_and_extension(string $filename) {
         $filenamepart = '';
         $fileextension = '';
