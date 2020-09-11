@@ -85,6 +85,7 @@ class qmul_download_feedback_lib {
         try {
             [$course, $cm] = get_course_and_cm_from_cmid($id, 'assign');
             $isblind = self::is_blindmarked((int)$cm->id);
+            $isgroup = $cm->groupmode === '1';
             $context = context_module::instance($cm->id);
             $users = get_enrolled_users($context);
             $fs = get_file_storage();
@@ -112,25 +113,27 @@ WHERE ag.userid = {$user}
                                     $fileindex = $userfile->get_filename();
                                     // Avoid dot file names.
                                     if ($fileindex !== '.' && strlen($fileindex) > 0) {
+                                        // Get the file name and extension.
+                                        [$fname, $fext] = self::get_filename_and_extension($fileindex);
                                         // If it is blind marked set the file id as file name.
                                         if ($isblind) {
-                                            // Get the file extension.
-                                            $explodedname = explode('.', $fileindex);
-                                            if (($pieces = count($explodedname)) > 1) {
-                                                $fileextension = '.' . $explodedname[$pieces - 1];
-                                            } else {
-                                                $fileextension = '';
-                                            }
                                             // Add the anonymous file with its original extension.
-                                            $fileindex = $userfile->get_id() . $fileextension;
+                                            $fileindex = $userfile->get_id() . $fext;
                                         } else {
                                             // Avoid overriding existing user files and add idnumber.
+
                                             // In general terms I should not expect this but just in case.
                                             if (isset($files[$fileindex])) {
-                                                $useridnumber =
-                                                    ($users[$user]->idnumber > '') ?
-                                                        $users[$user]->idnumber : $users[$user]->username;
-                                                $fileindex .= '_' . $useridnumber;
+                                                if ($isgroup) {
+                                                    // Allow the first file only. Trick the loop.
+                                                    $fileindex .= '';
+                                                } else {
+                                                    // Individual users file name conflict clarification.
+                                                    $useridnumber =
+                                                        ($users[$user]->idnumber > '') ?
+                                                            $users[$user]->idnumber : $users[$user]->username;
+                                                    $fileindex = $fname . '_' . $useridnumber . $fext;
+                                                }
                                             }
                                         }
                                         // Use a valid filename for the zip.
@@ -149,6 +152,25 @@ WHERE ag.userid = {$user}
         return $files;
     }
 
+    /**
+     * @param string $filename
+     *
+     * @return array
+     */
+    private static function get_filename_and_extension(string $filename) {
+        $filenamepart = '';
+        $fileextension = '';
+        $explodedname = explode('.', $filename);
+        if (($pieces = count($explodedname)) > 1) {
+            $fileextension = '.' . $explodedname[$pieces - 1];
+            unset($explodedname[$pieces - 1]);
+            $filenamepart = implode('.', $explodedname);
+        } else {
+            $filenamepart = $filename;
+            $fileextension = '';
+        }
+        return [$filenamepart, $fileextension];
+    }
 
     /**
      * @param assign $assignment
